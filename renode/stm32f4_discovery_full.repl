@@ -1,0 +1,28 @@
+using "platforms/boards/stm32f4_discovery.repl"
+
+// Adapted from ../../simple_sine_led/platforms/stm32f4_discovery_full.repl.
+// This firmware never leaves the 16 MHz HSI clock (see src/hal.c's
+// hal_init() -- no PLL reconfiguration), so SysTick ticks at 16 MHz, not
+// the stock board file's 72 MHz assumption.
+nvic:
+    systickFrequency: 16000000
+
+// Real STM32F407 has 64KB of CPU-only CCM RAM at 0x10000000; missing from
+// Renode's stock stm32f4.repl entirely. Unused by this project today (the
+// synthetic accelerometer driver's data lives in flash, not RAM), included
+// for parity with the other projects in this repo in case future firmware
+// here needs it.
+ccmram: Memory.MappedMemory @ sysbus 0x10000000
+    size: 0x10000
+
+// Stock stm32f4.repl models sram as 256KB and flash as 2MB (likely copied
+// from a bigger STM32F4 variant). The real STM32F407VG has 128KB of
+// contiguous main SRAM (112KB SRAM1 + 16KB SRAM2, @ 0x20000000, modeled by
+// this project's linker script as two adjoining regions -- see
+// ../STM32F407VG.ld -- but a single contiguous mapping here covers both)
+// and 1MB of flash (@ 0x08000000).
+sram:
+    size: 0x20000
+
+flash:
+    size: 0x100000

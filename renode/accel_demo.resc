@@ -1,0 +1,54 @@
+# accel_demo.resc
+#
+# Runs the stm32f4_accelerometer_example firmware (built with the
+# "stm32-renode" preset, which links src/accel_synthetic.c instead of
+# src/accel_real.c -- Renode has no model for either onboard accelerometer
+# chip, so real SPI capture cannot be emulated) and bridges USART2 to a TCP
+# socket so tools/uart_capture.py can trigger and capture a run exactly like
+# real hardware, just replaying CSV-derived samples instead of live SPI reads.
+#
+# Which reference CSV gets replayed is selected here at Renode invocation
+# time, not at build time: $csv_file/$csv_samples default to a pre-converted
+# copy of the same CSV baked into the committed firmware.elf
+# (renode/default_synthetic_accel.bin, generated from ../testdata/sample_capture.csv
+# by tools/csv_to_bin.py), but `sysbus LoadBinary` below overwrites
+# accel_synthetic.c's synthetic_accel_mg buffer in-place with whatever this
+# points at -- so a single compiled firmware.elf can replay any captured CSV
+# (up to the buffer's compiled-in 100-sample capacity) without a rebuild.
+# tools/run_accel_demo.py automates the convert-then-launch steps end to
+# end; see the "Renode" section of ../README.md to do it by hand with
+# `renode -e` overrides.
+#
+# Run with:
+#   renode renode/accel_demo.resc
+# Then, in another terminal:
+#   python3 tools/uart_capture.py --tcp localhost:3456 --out capture.csv --samples 20
+
+$bin ?= @build/stm32-renode/firmware.elf
+$csv_file ?= @renode/default_synthetic_accel.bin
+$csv_samples ?= 100
+
+mach create
+machine LoadPlatformDescription @renode/stm32f4_discovery_full.repl
+sysbus LoadELF $bin
+
+sysbus LoadBinary $csv_file `sysbus GetSymbolAddress "synthetic_accel_mg"`
+
+# synthetic_accel_len lives in .data (RAM, not flash), so writing it here --
+# before `start` -- gets silently clobbered the instant Reset_Handler copies
+# .data from flash to RAM during boot (see ../startup.c -- this project has
+# no libc init between that copy and main()). Fix: stash the override value
+# in CCM RAM scratch space (unused by this project -- nothing else is placed
+# in CCM here, unlike the PDM-audio Renode demo this pattern is copied from)
+# and copy it into the real variable via a one-shot CPU hook at accel_init()
+# entry, which runs after the .data copy but before anything reads
+# synthetic_accel_len.
+sysbus WriteDoubleWord 0x10000000 $csv_samples
+cpu AddHook `sysbus GetSymbolAddress "accel_init"` "self.Bus.WriteDoubleWord(self.Bus.GetSymbolAddress('synthetic_accel_len'), self.Bus.ReadDoubleWord(0x10000000))"
+
+# Bridge USART2 to a TCP server socket on port 3456 so uart_capture.py can
+# connect like a real serial port (nc/telnet/picocom also work for manual poking).
+emulation CreateServerSocketTerminal 3456 "uart_term" false
+connector Connect sysbus.usart2 uart_term
+
+start

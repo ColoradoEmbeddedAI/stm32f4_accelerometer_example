@@ -1,0 +1,38 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "stm32",
+      "displayName": "STM32F407 bare-metal (real accelerometer)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/stm32",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "MinSizeRel",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/arm-none-eabi.cmake",
+        "ACCEL_SOURCE": "real"
+      }
+    },
+    {
+      "name": "stm32-renode",
+      "displayName": "STM32F407 bare-metal (Renode synthetic accelerometer)",
+      "description": "IMU demo, CSV-derived synthetic source for Renode (no LIS3DSH/LIS302DL model)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/stm32-renode",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "MinSizeRel",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/arm-none-eabi.cmake",
+        "ACCEL_SOURCE": "synthetic"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "stm32",
+      "configurePreset": "stm32"
+    },
+    {
+      "name": "stm32-renode",
+      "configurePreset": "stm32-renode"
+    }
+  ]
+}
