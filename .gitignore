@@ -1,0 +1,19 @@
+# CMake/Ninja build output (regenerated via `cmake --preset <name> && cmake --build --preset <name>`)
+build/
+
+# Python venv (see README's "Python capture tool" setup)
+venv/
+
+# Python bytecode cache
+__pycache__/
+*.pyc
+
+# Generated accelerometer captures produced by tools/uart_capture.py
+# (see README's "Python capture tool" / "Renode" sections for how these are made)
+capture.csv
+out.csv
+
+# Not ignored, and intentionally committed:
+#   testdata/sample_capture.csv           -- reference capture
+#   src/generated/synthetic_accel_data.h  -- generated from it, checked in
+#   renode/default_synthetic_accel.bin    -- generated from it, checked in
